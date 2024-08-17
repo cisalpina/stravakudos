@@ -12,13 +12,11 @@ from selenium.webdriver.common.action_chains import ActionChains
 from xvfbwrapper import Xvfb
 
 def wait_for_page():
-    WebDriverWait(browser, 10).until(lambda driver: driver.execute_script('return document.re
-adyState') == 'complete')
+    WebDriverWait(browser, 10).until(lambda driver: driver.execute_script('return document.readyState') == 'complete')
 
 # Main Code Start
 #configdict = {}
-with open(os.path.dirname(__file__) + '/config.json') as json_file: configdict = json.load(js
-on_file)
+with open(os.path.dirname(__file__) + '/config.json') as json_file: configdict = json.load(json_file)
 
 vdisplay = Xvfb()
 vdisplay.start()
