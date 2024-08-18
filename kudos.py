@@ -41,7 +41,7 @@ browser.get("https://www.strava.com/login")
 wait_for_page()
 #username = browser.find_element(By.XPATH, "//input[@id='email']")
 #username.send_keys(user + Keys.TAB + password + Keys.ENTER)
-browser.find_element(By.XPATH, "//input[@id='email']").send_keys(user + Keys.TAB + Keys.TAB + password + Keys.ENTER)
+browser.find_element(By.XPATH, "//input[@id='email']").send_keys(user + Keys.TAB + password + Keys.ENTER)
 
 for x in range(kudospages):
   wait_for_page()
