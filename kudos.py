@@ -10,6 +10,7 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.common.action_chains import ActionChains
 from xvfbwrapper import Xvfb
+from selenium.webdriver.firefox.service import Service
 
 def wait_for_page():
     WebDriverWait(browser, 10).until(lambda driver: driver.execute_script('return document.readyState') == 'complete')
@@ -21,6 +22,8 @@ with open(os.path.dirname(__file__) + '/config.json') as json_file: configdict =
 vdisplay = Xvfb()
 vdisplay.start()
 
+service = Service('/usr/bin/geckodriver')
+
 user               = configdict["user"]
 password           = configdict["password"]
 kudospages         = configdict["kudospages"]
@@ -28,7 +31,7 @@ headless           = configdict["headless"]
 
 options = Options()
 options.headless = headless
-browser = webdriver.Firefox(options=options)
+browser = webdriver.Firefox(options=options, service=service)
 
 browser.implicitly_wait(2)
 
@@ -38,7 +41,7 @@ browser.get("https://www.strava.com/login")
 wait_for_page()
 #username = browser.find_element(By.XPATH, "//input[@id='email']")
 #username.send_keys(user + Keys.TAB + password + Keys.ENTER)
-browser.find_element(By.XPATH, "//input[@id='email']").send_keys(user + Keys.TAB + password + Keys.ENTER)
+browser.find_element(By.XPATH, "//input[@id='email']").send_keys(user + Keys.TAB + Keys.TAB + password + Keys.ENTER)
 
 for x in range(kudospages):
   wait_for_page()
