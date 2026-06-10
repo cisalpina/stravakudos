@@ -40,16 +40,14 @@ async def run_once(config) -> dict:
         # Try system Firefox first (real fingerprint); fall back to Playwright's bundled build.
         try:
             browser = await p.firefox.launch(headless=config.headless, channel="firefox")
+            log.info("Using system Firefox (firefox-esr)")
         except Exception:
             browser = await p.firefox.launch(headless=config.headless)
+            log.info("Using Playwright bundled Firefox (system Firefox not found)")
 
         context = await browser.new_context(
             **({"storage_state": storage} if storage else {}),
             viewport={"width": 1280, "height": 900},
-            user_agent=(
-                "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:128.0)"
-                " Gecko/20100101 Firefox/128.0"
-            ),
         )
         # Hide the automation flag that Strava uses to detect bots.
         await context.add_init_script(
