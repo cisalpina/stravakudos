@@ -2,10 +2,13 @@
 Strava Kudos Bot — main entry point.
 
 Runs on a configurable interval (default 10 min). Each cycle:
-  1. Restores a saved Playwright browser session (cookies).
-  2. Logs in fresh if the session has expired.
-  3. Scrolls the Strava dashboard feed and gives kudos.
-  4. Saves the updated session back to disk.
+  1. Phase 1 — session: real Firefox (firefox-esr) checks/restores the session.
+     Real Firefox is used here because Strava's login page detects Playwright's
+     bundled Firefox and rejects it. If login is needed the user logs in manually
+     via noVNC; the session cookie is then saved to disk.
+  2. Phase 2 — kudos: Playwright's bundled Firefox loads the saved session and
+     gives kudos. Playwright's Firefox executes Strava's MFE JavaScript reliably
+     (confirmed on Mac with hundreds of kudos given); firefox-esr does not.
 
 All configuration via environment variables (see .env.example).
 Set RUN_INTERVAL_MINUTES=0 to run once and exit (useful for testing).
@@ -27,6 +30,18 @@ from notify import send_failure_email, send_session_expired_email
 
 log = logging.getLogger(__name__)
 
+_DASHBOARD_URL = "https://www.strava.com/dashboard"
+_WEBDRIVER_HIDE = "Object.defineProperty(navigator,'webdriver',{get:()=>undefined})"
+
+
+async def _make_context(browser, storage):
+    context = await browser.new_context(
+        **({"storage_state": storage} if storage else {}),
+        viewport={"width": 1280, "height": 900},
+    )
+    await context.add_init_script(_WEBDRIVER_HIDE)
+    return context
+
 
 async def run_once(config) -> dict:
     """
@@ -37,28 +52,21 @@ async def run_once(config) -> dict:
     storage = auth.storage_state_path(config.data_dir)
 
     async with async_playwright() as p:
-        # Try system Firefox first (real fingerprint); fall back to Playwright's bundled build.
+
+        # ── Phase 1: ensure a valid session ──────────────────────────────────
+        # Use real Firefox to avoid bot detection on Strava's login page.
         try:
-            browser = await p.firefox.launch(headless=config.headless, channel="firefox")
-            log.info("Using system Firefox (firefox-esr)")
+            session_browser = await p.firefox.launch(headless=config.headless, channel="firefox")
+            log.info("Session browser: system Firefox (firefox-esr)")
         except Exception:
-            browser = await p.firefox.launch(headless=config.headless)
-            log.info("Using Playwright bundled Firefox (system Firefox not found)")
+            session_browser = await p.firefox.launch(headless=config.headless)
+            log.info("Session browser: Playwright bundled Firefox (firefox-esr not found)")
 
-        context = await browser.new_context(
-            **({"storage_state": storage} if storage else {}),
-            viewport={"width": 1280, "height": 900},
-        )
-        # Hide the automation flag that Strava uses to detect bots.
-        await context.add_init_script(
-            "Object.defineProperty(navigator,'webdriver',{get:()=>undefined})"
-        )
-        page = await context.new_page()
-        page.on("pageerror", lambda err: log.error("Browser JS error: %s", err))
-        page.on("console", lambda msg: log.warning("Browser console [%s]: %s", msg.type, msg.text) if msg.type == "error" else None)
+        session_context = await _make_context(session_browser, storage)
+        session_page = await session_context.new_page()
 
         try:
-            if not await auth.check_session(page):
+            if not await auth.check_session(session_page):
                 log.info("Session expired — sending notification and waiting for manual login...")
                 send_session_expired_email(
                     config.gmail_email,
@@ -67,34 +75,56 @@ async def run_once(config) -> dict:
                     config.novnc_url,
                     wait_minutes=5,
                 )
-                success = await auth.login(page, config)
+                success = await auth.login(session_page, config)
                 if not success:
                     raise RuntimeError(
                         "Login timed out — session still expired after 5-minute wait"
                     )
-                await auth.save_storage_state(context, config.data_dir)
+                await auth.save_storage_state(session_context, config.data_dir)
+                storage = auth.storage_state_path(config.data_dir)
+        finally:
+            await session_context.close()
+            await session_browser.close()
 
-            user_id = await feed.get_user_profile_id(page)
+        # ── Phase 2: give kudos ───────────────────────────────────────────────
+        # Playwright's bundled Firefox executes Strava's MFE JavaScript reliably.
+        kudos_browser = await p.firefox.launch(headless=config.headless)
+        log.info("Kudos browser: Playwright bundled Firefox")
+
+        kudos_context = await _make_context(kudos_browser, storage)
+        kudos_page = await kudos_context.new_page()
+        kudos_page.on("pageerror", lambda err: log.error("Browser JS error: %s", err))
+        kudos_page.on(
+            "console",
+            lambda msg: log.warning("Browser console [%s]: %s", msg.type, msg.text)
+            if msg.type == "error"
+            else None,
+        )
+
+        try:
+            # Navigate to dashboard so get_user_profile_id can read the nav bar.
+            await kudos_page.goto(_DASHBOARD_URL, wait_until="domcontentloaded")
+            user_id = await feed.get_user_profile_id(kudos_page)
             log.info("Running as athlete ID: %s", user_id or "(unknown)")
 
-            stats = await feed.give_kudos(page, config, user_id)
+            stats = await feed.give_kudos(kudos_page, config, user_id)
 
-            await auth.save_storage_state(context, config.data_dir)
+            await auth.save_storage_state(kudos_context, config.data_dir)
             return stats
 
         except Exception as exc:
             ts = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
             shot = str(Path(config.data_dir) / f"error_{ts}.png")
             try:
-                await page.screenshot(path=shot, full_page=False)
+                await kudos_page.screenshot(path=shot, full_page=False)
                 exc.screenshot_path = shot  # type: ignore[attr-defined]
             except Exception:
                 exc.screenshot_path = None  # type: ignore[attr-defined]
             raise
 
         finally:
-            await context.close()
-            await browser.close()
+            await kudos_context.close()
+            await kudos_browser.close()
 
 
 def _save_run_state(config, stats: dict) -> None:
