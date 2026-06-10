@@ -34,10 +34,12 @@ _DASHBOARD_URL = "https://www.strava.com/dashboard"
 _WEBDRIVER_HIDE = "Object.defineProperty(navigator,'webdriver',{get:()=>undefined})"
 
 
-async def _make_context(browser, storage):
+async def _make_context(browser, storage, *, ignore_https_errors=False, user_agent=None):
     context = await browser.new_context(
         **({"storage_state": storage} if storage else {}),
         viewport={"width": 1280, "height": 900},
+        ignore_https_errors=ignore_https_errors,
+        **({"user_agent": user_agent} if user_agent else {}),
     )
     await context.add_init_script(_WEBDRIVER_HIDE)
     return context
@@ -91,7 +93,12 @@ async def run_once(config) -> dict:
         kudos_browser = await p.firefox.launch(headless=config.headless)
         log.info("Kudos browser: Playwright bundled Firefox")
 
-        kudos_context = await _make_context(kudos_browser, storage)
+        kudos_context = await _make_context(
+            kudos_browser,
+            storage,
+            ignore_https_errors=True,
+            user_agent="Mozilla/5.0 (X11; Linux x86_64; rv:128.0) Gecko/20100101 Firefox/128.0",
+        )
         kudos_page = await kudos_context.new_page()
         kudos_page.on("pageerror", lambda err: log.error("Browser JS error: %s", err))
         kudos_page.on(
@@ -99,6 +106,10 @@ async def run_once(config) -> dict:
             lambda msg: log.warning("Browser console [%s]: %s", msg.type, msg.text)
             if msg.type == "error"
             else None,
+        )
+        kudos_page.on(
+            "requestfailed",
+            lambda req: log.warning("Request failed: %s — %s", req.url, req.failure),
         )
 
         try:
