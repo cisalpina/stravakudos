@@ -5,7 +5,7 @@
   <Registry>https://hub.docker.com/r/cisalpina/stravakudos</Registry>
   <Network>bridge</Network>
   <Shell>sh</Shell>
-  <Privileged>false</Privileged>
+  <Privileged>true</Privileged>
   <Overview>Automated Strava kudos bot. Logs in to Strava and gives kudos to all recent activities in your feed. On first run (or when your session expires), open the noVNC web UI to log in manually — the bot emails you a link when it needs you.</Overview>
   <Category>Tools:</Category>
   <WebUI>http://[IP]:[PORT:6080]/</WebUI>

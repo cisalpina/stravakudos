@@ -10,7 +10,7 @@ sleep 2  # give Xvfb time to initialise
 fluxbox -display :1 &>/dev/null &
 
 # VNC server — no password, LAN/Docker use only
-x11vnc -display :1 -nopw -listen 0.0.0.0 -xkb -forever -shared -quiet &
+x11vnc -display :1 -auth guess -nopw -listen 0.0.0.0 -xkb -forever -shared -quiet &
 
 # noVNC web UI on port 6080 — open http://<host>:6080 to see the browser
 websockify --web=/opt/novnc 6080 localhost:5900 &
