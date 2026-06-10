@@ -1,5 +1,6 @@
 import logging
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 
 from playwright.async_api import Page
 
@@ -52,9 +53,15 @@ async def give_kudos(page: Page, config: Config, user_profile_id: str) -> dict:
 
     # Wait for the feed to populate
     try:
-        await page.wait_for_selector(_SEL_FEED_ENTRY, timeout=15000)
+        await page.wait_for_selector(_SEL_FEED_ENTRY, timeout=30000)
     except Exception:
-        log.warning("Feed entries did not appear — dashboard may have changed structure")
+        ts = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+        shot = str(Path(config.data_dir) / f"feed_not_found_{ts}.png")
+        try:
+            await page.screenshot(path=shot, full_page=True)
+            log.warning("Feed entries did not appear — screenshot saved to %s", shot)
+        except Exception:
+            log.warning("Feed entries did not appear — dashboard may have changed structure")
         return {"kudos_given": 0, "stop_reason": "feed_not_found"}
 
     kudos_given = 0
