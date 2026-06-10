@@ -31,7 +31,7 @@ async def get_user_profile_id(page: Page) -> str:
         return ""
 
 
-async def give_kudos(page: Page, config: Config, user_profile_id: str) -> dict:
+async def give_kudos(page: Page, config: Config, user_profile_id: str = "") -> dict:
     """
     Scroll the dashboard feed, giving kudos to all un-kudosed activities.
 
@@ -48,6 +48,11 @@ async def give_kudos(page: Page, config: Config, user_profile_id: str) -> dict:
     except Exception:
         # networkidle timed out (persistent connections) — page may still be usable
         log.info("networkidle timeout — proceeding with current page state")
+
+    # Resolve user profile ID now that the page is loaded (avoids a double navigation).
+    if not user_profile_id:
+        user_profile_id = await get_user_profile_id(page)
+    log.info("Running as athlete ID: %s", user_profile_id or "(unknown)")
 
     # Dismiss any post-login modal (Welcome tour, etc.)
     try:

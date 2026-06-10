@@ -113,12 +113,7 @@ async def run_once(config) -> dict:
         )
 
         try:
-            # Navigate to dashboard so get_user_profile_id can read the nav bar.
-            await kudos_page.goto(_DASHBOARD_URL, wait_until="domcontentloaded")
-            user_id = await feed.get_user_profile_id(kudos_page)
-            log.info("Running as athlete ID: %s", user_id or "(unknown)")
-
-            stats = await feed.give_kudos(kudos_page, config, user_id)
+            stats = await feed.give_kudos(kudos_page, config)
 
             await auth.save_storage_state(kudos_context, config.data_dir)
             return stats
