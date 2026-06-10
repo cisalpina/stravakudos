@@ -1,0 +1,71 @@
+<?xml version="1.0"?>
+<Container version="2">
+  <Name>stravakudos</Name>
+  <Repository>cisalpina/stravakudos:latest</Repository>
+  <Registry>https://hub.docker.com/r/cisalpina/stravakudos</Registry>
+  <Network>bridge</Network>
+  <Shell>sh</Shell>
+  <Privileged>false</Privileged>
+  <Overview>Automated Strava kudos bot. Logs in to Strava and gives kudos to all recent activities in your feed. On first run (or when your session expires), open the noVNC web UI to log in manually — the bot emails you a link when it needs you.</Overview>
+  <Category>Tools:</Category>
+  <WebUI>http://[IP]:[PORT:6080]/</WebUI>
+  <TemplateURL>https://raw.githubusercontent.com/cisalpina/stravakudos/main/unraid-template.xml</TemplateURL>
+  <Icon>https://upload.wikimedia.org/wikipedia/commons/thumb/5/5f/Strava_logo.svg/512px-Strava_logo.svg.png</Icon>
+
+  <!-- Port -->
+  <Config Name="noVNC Web UI" Target="6080" Default="6080" Mode="tcp"
+    Description="Browser-based VNC interface. Open this to log in to Strava manually on first run or after session expiry."
+    Type="Port" Display="always" Required="true" Mask="false">6080</Config>
+
+  <!-- Volume -->
+  <Config Name="Data" Target="/data" Default="/mnt/user/appdata/stravakudos" Mode="rw"
+    Description="Stores the Strava session cookie, run stats, and error screenshots."
+    Type="Path" Display="always" Required="true" Mask="false">/mnt/user/appdata/stravakudos</Config>
+
+  <!-- Required env vars -->
+  <Config Name="Strava Email" Target="STRAVA_EMAIL" Default="" Mode=""
+    Description="Your Strava account email address."
+    Type="Variable" Display="always" Required="true" Mask="false"></Config>
+
+  <Config Name="Strava Password" Target="STRAVA_PASSWORD" Default="" Mode=""
+    Description="Your Strava account password."
+    Type="Variable" Display="always" Required="true" Mask="true"></Config>
+
+  <Config Name="Gmail Email" Target="GMAIL_EMAIL" Default="" Mode=""
+    Description="Gmail address used for notifications and one-time code reading."
+    Type="Variable" Display="always" Required="true" Mask="false"></Config>
+
+  <Config Name="Gmail App Password" Target="GMAIL_APP_PASSWORD" Default="" Mode=""
+    Description="Gmail App Password (not your main Google password). Generate one at myaccount.google.com/apppasswords."
+    Type="Variable" Display="always" Required="true" Mask="true"></Config>
+
+  <Config Name="Notify Email" Target="NOTIFY_EMAIL" Default="" Mode=""
+    Description="Email address to receive login-required alerts and failure notifications."
+    Type="Variable" Display="always" Required="true" Mask="false"></Config>
+
+  <!-- Optional env vars — shown in Advanced -->
+  <Config Name="noVNC URL" Target="NOVNC_URL" Default="http://[IP]:[PORT:6080]" Mode=""
+    Description="URL included in login notification emails so you can click straight to the browser. Leave as default unless you're behind a reverse proxy."
+    Type="Variable" Display="always" Required="false" Mask="false">http://[IP]:[PORT:6080]</Config>
+
+  <Config Name="Max Kudos per Run" Target="MAX_KUDOS" Default="20" Mode=""
+    Description="Safety cap on the number of kudos given per run."
+    Type="Variable" Display="advanced" Required="false" Mask="false">20</Config>
+
+  <Config Name="Lookback Hours" Target="LOOKBACK_HOURS" Default="24" Mode=""
+    Description="Only kudos activities posted within this many hours."
+    Type="Variable" Display="advanced" Required="false" Mask="false">24</Config>
+
+  <Config Name="Run Interval Minutes" Target="RUN_INTERVAL_MINUTES" Default="10" Mode=""
+    Description="Minutes between kudos runs. Set to 0 to run once and exit (useful for testing)."
+    Type="Variable" Display="advanced" Required="false" Mask="false">10</Config>
+
+  <!-- Internal/fixed vars — hidden from the user -->
+  <Config Name="Data Dir" Target="DATA_DIR" Default="/data" Mode=""
+    Description=""
+    Type="Variable" Display="false" Required="false" Mask="false">/data</Config>
+
+  <Config Name="Headless" Target="HEADLESS" Default="false" Mode=""
+    Description=""
+    Type="Variable" Display="false" Required="false" Mask="false">false</Config>
+</Container>

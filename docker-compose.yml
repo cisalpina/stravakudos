@@ -1,0 +1,24 @@
+services:
+  stravakudos:
+    image: cisalpina/stravakudos:latest
+    restart: unless-stopped
+    ports:
+      - "6080:6080"
+    volumes:
+      - ./data:/data
+    environment:
+      # Required
+      - STRAVA_EMAIL
+      - STRAVA_PASSWORD
+      - GMAIL_EMAIL
+      - GMAIL_APP_PASSWORD
+      - NOTIFY_EMAIL
+      # Optional (defaults shown)
+      - MAX_KUDOS=20
+      - LOOKBACK_HOURS=24
+      - RUN_INTERVAL_MINUTES=10
+      - NOVNC_URL=http://localhost:6080
+      # Container-specific (don't change these)
+      - DATA_DIR=/data
+      - HEADLESS=false
+      - DISPLAY=:1

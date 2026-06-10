@@ -1,0 +1,17 @@
+# Credentials and local config
+.env
+
+# Runtime data (cookies, screenshots, run state)
+data/
+
+# Python virtualenv
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+
+# macOS
+.DS_Store
+
+# Claude Code local settings
+.claude/
