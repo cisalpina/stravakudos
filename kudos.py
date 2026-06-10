@@ -54,6 +54,8 @@ async def run_once(config) -> dict:
             "Object.defineProperty(navigator,'webdriver',{get:()=>undefined})"
         )
         page = await context.new_page()
+        page.on("pageerror", lambda err: log.error("Browser JS error: %s", err))
+        page.on("console", lambda msg: log.warning("Browser console [%s]: %s", msg.type, msg.text) if msg.type == "error" else None)
 
         try:
             if not await auth.check_session(page):
