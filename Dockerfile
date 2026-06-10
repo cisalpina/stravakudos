@@ -24,7 +24,11 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Firefox binary + all its system library dependencies
+# Real Firefox (for manual login — unmodified binary avoids bot detection)
+RUN apt-get update && apt-get install -y --no-install-recommends firefox-esr \
+    && rm -rf /var/lib/apt/lists/*
+
+# Playwright's Firefox + its system library dependencies (used for headless kudos runs)
 RUN playwright install firefox && playwright install-deps firefox
 
 COPY *.py .
