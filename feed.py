@@ -43,7 +43,7 @@ async def give_kudos(page: Page, config: Config, user_profile_id: str) -> dict:
 
     Returns {"kudos_given": int, "stop_reason": str}
     """
-    await page.goto(_DASHBOARD_URL, wait_until="domcontentloaded")
+    await page.goto(_DASHBOARD_URL, wait_until="load")
 
     # Dismiss any post-login modal (Welcome tour, etc.)
     try:
@@ -53,15 +53,20 @@ async def give_kudos(page: Page, config: Config, user_profile_id: str) -> dict:
 
     # Wait for the feed to populate
     try:
-        await page.wait_for_selector(_SEL_FEED_ENTRY, timeout=30000)
+        await page.wait_for_selector(_SEL_FEED_ENTRY, timeout=60000)
     except Exception:
         ts = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
-        shot = str(Path(config.data_dir) / f"feed_not_found_{ts}.png")
+        base = Path(config.data_dir) / f"feed_not_found_{ts}"
         try:
-            await page.screenshot(path=shot, full_page=True)
-            log.warning("Feed entries did not appear — screenshot saved to %s", shot)
+            await page.screenshot(path=f"{base}.png", full_page=True)
         except Exception:
-            log.warning("Feed entries did not appear — dashboard may have changed structure")
+            pass
+        try:
+            html = await page.content()
+            Path(f"{base}.html").write_text(html, encoding="utf-8")
+        except Exception:
+            pass
+        log.warning("Feed entries did not appear — diagnostics saved to %s.{png,html}", base)
         return {"kudos_given": 0, "stop_reason": "feed_not_found"}
 
     kudos_given = 0
