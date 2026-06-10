@@ -75,6 +75,7 @@ async def give_kudos(page: Page, config: Config, user_profile_id: str) -> dict:
 
     while True:
         entries = await page.query_selector_all(_SEL_FEED_ENTRY)
+        log.info("Feed entries visible: %d (processed so far: %d)", len(entries), processed_count)
 
         if processed_count >= len(entries):
             prev_count = len(entries)
@@ -83,6 +84,13 @@ async def give_kudos(page: Page, config: Config, user_profile_id: str) -> dict:
             entries = await page.query_selector_all(_SEL_FEED_ENTRY)
             if len(entries) <= prev_count:
                 log.info("No new entries after scroll — feed exhausted")
+                ts = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+                shot = str(Path(config.data_dir) / f"feed_exhausted_{ts}.png")
+                try:
+                    await page.screenshot(path=shot, full_page=True)
+                    log.info("Screenshot saved to %s", shot)
+                except Exception:
+                    pass
                 break
             continue  # Re-enter loop with updated entries
 
@@ -97,6 +105,8 @@ async def give_kudos(page: Page, config: Config, user_profile_id: str) -> dict:
             except Exception:
                 log.exception("Error processing feed entry %d — skipping", i)
                 continue
+
+            log.info("Entry %d: %s", i, result)
 
             if result == "kudos":
                 kudos_given += 1
