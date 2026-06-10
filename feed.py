@@ -43,7 +43,11 @@ async def give_kudos(page: Page, config: Config, user_profile_id: str) -> dict:
 
     Returns {"kudos_given": int, "stop_reason": str}
     """
-    await page.goto(_DASHBOARD_URL, wait_until="load")
+    try:
+        await page.goto(_DASHBOARD_URL, wait_until="networkidle", timeout=90000)
+    except Exception:
+        # networkidle timed out (persistent connections) — page may still be usable
+        log.info("networkidle timeout — proceeding with current page state")
 
     # Dismiss any post-login modal (Welcome tour, etc.)
     try:
