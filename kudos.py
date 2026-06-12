@@ -109,7 +109,9 @@ async def run_once(config) -> dict:
         )
         kudos_page.on(
             "requestfailed",
-            lambda req: log.warning("Request failed: %s — %s", req.url, req.failure),
+            lambda req: log.warning("Request failed: %s — %s", req.url, req.failure)
+            if req.failure != "NS_BINDING_ABORTED"
+            else None,
         )
 
         try:

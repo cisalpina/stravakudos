@@ -4,6 +4,9 @@ services:
     restart: unless-stopped
     ports:
       - "6080:6080"
+    dns:
+      - 1.1.1.1
+      - 8.8.8.8
     volumes:
       - ./data:/data
     environment:
