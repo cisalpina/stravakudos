@@ -62,7 +62,7 @@ async def give_kudos(page: Page, config: Config, user_profile_id: str = "") -> d
 
     # Wait for the feed to populate
     try:
-        await page.wait_for_selector(_SEL_FEED_ENTRY, timeout=60000)
+        await page.wait_for_selector(_SEL_FEED_ENTRY, timeout=120000)
     except Exception:
         ts = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
         base = Path(config.data_dir) / f"feed_not_found_{ts}"
@@ -95,9 +95,9 @@ async def give_kudos(page: Page, config: Config, user_profile_id: str = "") -> d
             if len(entries) == 0:
                 # React flash/re-fetch: wait_for_selector fired on the brief cached
                 # render, then React blanked the page to re-fetch. Wait again.
-                log.info("Feed shows 0 entries — waiting up to 60s for React re-render...")
+                log.info("Feed shows 0 entries — waiting up to 120s for React re-render...")
                 try:
-                    await page.wait_for_selector(_SEL_FEED_ENTRY, timeout=60000)
+                    await page.wait_for_selector(_SEL_FEED_ENTRY, timeout=120000)
                 except Exception:
                     ts = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
                     base = Path(config.data_dir) / f"feed_not_found_{ts}"

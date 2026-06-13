@@ -36,13 +36,32 @@ _DASHBOARD_URL = "https://www.strava.com/dashboard"
 _WEBDRIVER_HIDE = "Object.defineProperty(navigator,'webdriver',{get:()=>undefined})"
 
 # Analytics/tracking domains that retry aggressively and delay networkidle.
-# Aborting them at the browser level keeps runs fast and predictable.
+# Fulfilled (not aborted) so the SDK thinks it succeeded and doesn't retry;
+# abort() produces NS_ERROR_FAILURE which can cascade into MFE JS errors.
 _ANALYTICS_RE = re.compile(
     r"analytics\.tiktok\.com"
     r"|googletagmanager\.com"
     r"|google-analytics\.com"
     r"|connect\.facebook\.net"
 )
+
+
+async def _block_analytics(route) -> None:
+    await route.fulfill(status=200, body="")
+
+
+async def _on_console(msg) -> None:
+    if msg.type != "error":
+        return
+    text = msg.text
+    if text == "JSHandle@object" and msg.args:
+        try:
+            val = await msg.args[0].json_value()
+            log.warning("Browser console [error]: %s", val)
+            return
+        except Exception:
+            pass
+    log.warning("Browser console [error]: %s", text)
 
 
 async def _make_context(browser, storage, *, ignore_https_errors=False, user_agent=None):
@@ -110,18 +129,10 @@ async def run_once(config) -> dict:
             ignore_https_errors=True,
             user_agent="Mozilla/5.0 (X11; Linux x86_64; rv:128.0) Gecko/20100101 Firefox/128.0",
         )
-        await kudos_context.route(
-            _ANALYTICS_RE,
-            lambda route: route.abort(),
-        )
+        await kudos_context.route(_ANALYTICS_RE, _block_analytics)
         kudos_page = await kudos_context.new_page()
         kudos_page.on("pageerror", lambda err: log.error("Browser JS error: %s", err))
-        kudos_page.on(
-            "console",
-            lambda msg: log.warning("Browser console [%s]: %s", msg.type, msg.text)
-            if msg.type == "error"
-            else None,
-        )
+        kudos_page.on("console", _on_console)
         kudos_page.on(
             "requestfailed",
             lambda req: log.warning("Request failed: %s — %s", req.url, req.failure)
