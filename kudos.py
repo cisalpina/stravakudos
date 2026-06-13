@@ -11,6 +11,7 @@ Runs on a configurable interval (default 10 min). Each cycle:
      (confirmed on Mac with hundreds of kudos given); firefox-esr does not.
 
 All configuration via environment variables (see .env.example).
+
 Set RUN_INTERVAL_MINUTES=0 to run once and exit (useful for testing).
 """
 
