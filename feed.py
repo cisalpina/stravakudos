@@ -1,7 +1,6 @@
 import json
 import logging
 from datetime import datetime, timedelta, timezone
-from pathlib import Path
 
 from playwright.async_api import Page
 
@@ -100,19 +99,7 @@ async def give_kudos(page: Page, config: Config, user_profile_id: str = "") -> d
     try:
         await page.wait_for_selector(_SEL_FEED_ENTRY, timeout=120000)
     except Exception:
-        ts = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
-        base = Path(config.data_dir) / f"feed_not_found_{ts}"
         await _log_page_state(page, "Feed entries did not appear")
-        try:
-            await page.screenshot(path=f"{base}.png", full_page=True)
-        except Exception:
-            pass
-        try:
-            html = await page.content()
-            Path(f"{base}.html").write_text(html, encoding="utf-8")
-        except Exception:
-            pass
-        log.warning("Diagnostics saved to %s.{png,html}", base)
         return {"kudos_given": 0, "stop_reason": "feed_not_found"}
 
     kudos_given = 0
@@ -129,43 +116,12 @@ async def give_kudos(page: Page, config: Config, user_profile_id: str = "") -> d
         log.info("Feed entries visible: %d (processed so far: %d)", len(entries), processed_count)
 
         if processed_count >= len(entries):
-            if len(entries) == 0:
-                # React flash/re-fetch: wait_for_selector fired on the brief cached
-                # render, then React blanked the page to re-fetch. Wait again.
-                log.info("Feed shows 0 entries — waiting up to 120s for React re-render...")
-                try:
-                    await page.wait_for_selector(_SEL_FEED_ENTRY, timeout=120000)
-                except Exception:
-                    ts = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
-                    base = Path(config.data_dir) / f"feed_not_found_{ts}"
-                    try:
-                        await page.screenshot(path=f"{base}.png", full_page=True)
-                    except Exception:
-                        pass
-                    try:
-                        html = await page.content()
-                        Path(f"{base}.html").write_text(html, encoding="utf-8")
-                    except Exception:
-                        pass
-                    log.warning(
-                        "Feed still empty after 60s wait — diagnostics saved to %s.{png,html}", base
-                    )
-                    return {"kudos_given": 0, "stop_reason": "feed_not_found"}
-                continue
-
             prev_count = len(entries)
             await page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
             await page.wait_for_timeout(3000)
             entries = await page.query_selector_all(_SEL_FEED_ENTRY)
             if len(entries) <= prev_count:
                 log.info("No new entries after scroll — feed exhausted")
-                ts = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
-                shot = str(Path(config.data_dir) / f"feed_exhausted_{ts}.png")
-                try:
-                    await page.screenshot(path=shot, full_page=True)
-                    log.info("Screenshot saved to %s", shot)
-                except Exception:
-                    pass
                 break
             continue  # Re-enter loop with updated entries
 
