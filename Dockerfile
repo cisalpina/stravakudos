@@ -1,12 +1,16 @@
 FROM python:3.12-slim
 
-# System packages: virtual display, VNC, window manager, noVNC downloader
+# System packages: virtual display, VNC, window manager, noVNC downloader.
+# ffmpeg is required for Firefox to decode H.264 video — Strava feed entries
+# render video thumbnails, and without ffmpeg the video React component throws
+# (`t is undefined` on a ref), which blanks the entire feed container.
 RUN apt-get update && apt-get install -y --no-install-recommends \
         xvfb \
         x11vnc \
         fluxbox \
         wget \
         ca-certificates \
+        ffmpeg \
     && rm -rf /var/lib/apt/lists/*
 
 # noVNC (web-based VNC viewer) + websockify (WebSocket-to-TCP proxy)

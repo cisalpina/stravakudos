@@ -1,3 +1,4 @@
+import json
 import logging
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -7,6 +8,41 @@ from playwright.async_api import Page
 from config import Config
 
 log = logging.getLogger(__name__)
+
+
+_DIAG_JS = """
+() => ({
+    url: window.location.href,
+    title: document.title,
+    bodyChildCount: document.body ? document.body.children.length : 0,
+    testIds: Array.from(document.querySelectorAll('[data-testid]'))
+        .map(e => e.getAttribute('data-testid'))
+        .slice(0, 50),
+    counts: {
+        web_feed_entry: document.querySelectorAll('[data-testid=web-feed-entry]').length,
+        feed_class: document.querySelectorAll('[class*=Feed], [class*=feed]').length,
+        main: document.querySelectorAll('main').length,
+        article: document.querySelectorAll('article').length,
+        button: document.querySelectorAll('button').length,
+    },
+    headings: Array.from(document.querySelectorAll('h1, h2, h3'))
+        .map(h => (h.textContent || '').trim())
+        .filter(t => t)
+        .slice(0, 10),
+    errorText: Array.from(document.querySelectorAll('[class*=error], [class*=Error]'))
+        .map(e => (e.textContent || '').trim().substring(0, 200))
+        .filter(t => t)
+        .slice(0, 5),
+})
+"""
+
+
+async def _log_page_state(page: Page, prefix: str) -> None:
+    try:
+        diag = await page.evaluate(_DIAG_JS)
+        log.warning("%s — page state: %s", prefix, json.dumps(diag))
+    except Exception as e:
+        log.warning("%s — could not capture page state: %s", prefix, e)
 
 _DASHBOARD_URL = "https://www.strava.com/dashboard"
 
@@ -66,6 +102,7 @@ async def give_kudos(page: Page, config: Config, user_profile_id: str = "") -> d
     except Exception:
         ts = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
         base = Path(config.data_dir) / f"feed_not_found_{ts}"
+        await _log_page_state(page, "Feed entries did not appear")
         try:
             await page.screenshot(path=f"{base}.png", full_page=True)
         except Exception:
@@ -75,7 +112,7 @@ async def give_kudos(page: Page, config: Config, user_profile_id: str = "") -> d
             Path(f"{base}.html").write_text(html, encoding="utf-8")
         except Exception:
             pass
-        log.warning("Feed entries did not appear — diagnostics saved to %s.{png,html}", base)
+        log.warning("Diagnostics saved to %s.{png,html}", base)
         return {"kudos_given": 0, "stop_reason": "feed_not_found"}
 
     kudos_given = 0
