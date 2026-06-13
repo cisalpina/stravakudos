@@ -17,6 +17,7 @@ Set RUN_INTERVAL_MINUTES=0 to run once and exit (useful for testing).
 import asyncio
 import json
 import logging
+import re
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -32,6 +33,15 @@ log = logging.getLogger(__name__)
 
 _DASHBOARD_URL = "https://www.strava.com/dashboard"
 _WEBDRIVER_HIDE = "Object.defineProperty(navigator,'webdriver',{get:()=>undefined})"
+
+# Analytics/tracking domains that retry aggressively and delay networkidle.
+# Aborting them at the browser level keeps runs fast and predictable.
+_ANALYTICS_RE = re.compile(
+    r"analytics\.tiktok\.com"
+    r"|googletagmanager\.com"
+    r"|google-analytics\.com"
+    r"|connect\.facebook\.net"
+)
 
 
 async def _make_context(browser, storage, *, ignore_https_errors=False, user_agent=None):
@@ -98,6 +108,10 @@ async def run_once(config) -> dict:
             storage,
             ignore_https_errors=True,
             user_agent="Mozilla/5.0 (X11; Linux x86_64; rv:128.0) Gecko/20100101 Firefox/128.0",
+        )
+        await kudos_context.route(
+            _ANALYTICS_RE,
+            lambda route: route.abort(),
         )
         kudos_page = await kudos_context.new_page()
         kudos_page.on("pageerror", lambda err: log.error("Browser JS error: %s", err))
