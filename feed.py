@@ -92,6 +92,30 @@ async def give_kudos(page: Page, config: Config, user_profile_id: str = "") -> d
         log.info("Feed entries visible: %d (processed so far: %d)", len(entries), processed_count)
 
         if processed_count >= len(entries):
+            if len(entries) == 0:
+                # React flash/re-fetch: wait_for_selector fired on the brief cached
+                # render, then React blanked the page to re-fetch. Wait again.
+                log.info("Feed shows 0 entries — waiting up to 60s for React re-render...")
+                try:
+                    await page.wait_for_selector(_SEL_FEED_ENTRY, timeout=60000)
+                except Exception:
+                    ts = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+                    base = Path(config.data_dir) / f"feed_not_found_{ts}"
+                    try:
+                        await page.screenshot(path=f"{base}.png", full_page=True)
+                    except Exception:
+                        pass
+                    try:
+                        html = await page.content()
+                        Path(f"{base}.html").write_text(html, encoding="utf-8")
+                    except Exception:
+                        pass
+                    log.warning(
+                        "Feed still empty after 60s wait — diagnostics saved to %s.{png,html}", base
+                    )
+                    return {"kudos_given": 0, "stop_reason": "feed_not_found"}
+                continue
+
             prev_count = len(entries)
             await page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
             await page.wait_for_timeout(3000)
