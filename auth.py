@@ -2,7 +2,7 @@ import logging
 from pathlib import Path
 from typing import Optional
 
-from playwright.async_api import BrowserContext, Page
+from playwright.async_api import BrowserContext, Error as PlaywrightError, Page
 
 from config import Config
 
@@ -49,7 +49,10 @@ def storage_state_path(data_dir: str) -> Optional[str]:
 
 async def save_storage_state(context: BrowserContext, data_dir: str) -> None:
     path = Path(data_dir) / "storage_state.json"
-    await context.storage_state(path=str(path))
-    log.info("Session saved to %s", path)
+    try:
+        await context.storage_state(path=str(path))
+        log.info("Session saved to %s", path)
+    except PlaywrightError as exc:
+        log.warning("Could not save session state (context closed): %s", exc)
 
 
