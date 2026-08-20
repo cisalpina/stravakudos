@@ -109,12 +109,16 @@ Volumes:     ./data → /data  (cookies, last_run.json, error screenshots)
 Restart:     unless-stopped
 ```
 
-## Future: publishing to Docker Hub
+## Publishing to Docker Hub
+
+Build for both amd64 and arm64 and push in one step:
 
 ```bash
 docker login
-docker build -t <user>/stravakudos:latest .
-docker push <user>/stravakudos:latest
+docker buildx build --platform linux/amd64,linux/arm64 \
+  -t cisalpina/stravakudos:latest \
+  --push \
+  /Users/saabini/code/stravakudos
 ```
 
 Source code lives on GitHub (private repo); built image lives on Docker Hub.
